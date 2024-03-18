@@ -11,6 +11,7 @@ import {
   AppsAddInRegular,
   DeleteRegular,
   CalendarMonthRegular,
+  ArrowSyncCircleRegular,
 } from "@fluentui/react-icons";
 
 import NumericInput from "react-numeric-input";
@@ -690,7 +691,7 @@ function App() {
                 </div>
                 <div style={{ marginLeft: "20px" }}>
                   <Button
-                    icon={<CalendarMonthRegular />}
+                    icon={<ArrowSyncCircleRegular />}
                     style={{
                       width: "100%",
                       height: "43px",
