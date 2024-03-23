@@ -20,13 +20,19 @@ function App() {
   const [numAlternatives, setNumAlternatives] = useState(1);
   const [alternatives, setAlternatives] = useState([]);
   const [weights, setWeights] = useState([]);
-  //
   const [requestedNewInterpretation, setRequestedNewInterpretation] =
     useState(false);
   const [supermessage, setSupermessage] = useState("");
 
+  const [loadingAlternatives, setLoadingAlternatives] = useState(true);
+  const [loadingNewAlternative, setLoadingNewAlternative] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(true);
+
   const doCompleteFlow = async () => {
     setStarted(true);
+    setLoadingAlternatives(true);
+    setLoadingNewAlternative(false);
+    setLoadingMessage(true);
 
     try {
       const alternativesResponse = await fetch("/api/postAlternatives", {
@@ -50,6 +56,7 @@ function App() {
       }
       setAlternatives(alternatives);
       setWeights(newWeights);
+      setLoadingAlternatives(false);
 
       const scenarioResponse = await fetch("/api/postScenario", {
         method: "POST",
@@ -81,6 +88,7 @@ function App() {
         throw new Error("No message returned");
       }
       setSupermessage(message);
+      setLoadingMessage(false);
     } catch (error) {
       console.error("Error posting data:", error);
     }
@@ -88,6 +96,8 @@ function App() {
 
   const doNewAlternative = async () => {
     setRequestedNewInterpretation(true);
+    setLoadingNewAlternative(true);
+
     try {
       const newAlternativeResponse = await fetch("/api/postNewAlternative", {
         method: "POST",
@@ -115,15 +125,17 @@ function App() {
       setAlternatives([...alternatives, newAlternativeSanitized]);
       setWeights([...weights, 1]);
       setNumAlternatives(numAlternatives + 1);
-
-      setRequestedNewInterpretation(false);
     } catch (error) {
       console.error("Error posting data:", error);
+    } finally {
       setRequestedNewInterpretation(false);
+      setLoadingNewAlternative(false);
     }
   };
 
   const doNewMessage = async () => {
+    setLoadingMessage(true);
+
     try {
       const scenarioResponse = await fetch("/api/postScenario", {
         method: "POST",
@@ -157,22 +169,28 @@ function App() {
       setSupermessage(message);
     } catch (error) {
       console.error("Error posting data:", error);
+    } finally {
+      setLoadingMessage(false);
     }
   };
 
-  //
   const restart = () => {
     setStarted(false);
-    setAlternatives([]);
     setUtterance("");
     setNumAlternatives(1);
+    setAlternatives([]);
     setWeights([]);
+    setRequestedNewInterpretation(false);
+    setSupermessage("");
+    setLoadingAlternatives(true);
+    setLoadingNewAlternative(false);
+    setLoadingMessage(true);
   };
 
   //
-  const renderLoadingDivs = () => {
+  const renderLoadingAlternatives = (numSkeletons) => {
     const divs = [];
-    for (let i = 0; i < numAlternatives + 1; i++) {
+    for (let i = 0; i < numSkeletons; i++) {
       divs.push(
         <div
           key={"sk" + i}
@@ -491,9 +509,9 @@ function App() {
       {started && (
         <div style={{ display: "flex", marginTop: "2rem" }}>
           <div style={{ flex: 3, display: "flex" }}>
+            {/* Deletes */}
             <div style={{ flex: 1 }}>
-              {alternatives.length > 0 &&
-                weights.length > 0 &&
+              {!loadingAlternatives &&
                 weights.map((weight, index) => (
                   <div
                     key={"d" + index}
@@ -510,106 +528,83 @@ function App() {
                           width: "100%",
                         }}
                         onClick={() => {
-                          console.log(index);
+                          console.log("Deleting", index);
                           const newWeights = [...weights];
                           newWeights.splice(index, 1);
-                          setWeights(newWeights);
-                          const newAlternatives = [...alternatives];
-                          newAlternatives.splice(index, 1);
-                          setAlternatives(newAlternatives);
+                          setWeights([
+                            ...weights.slice(0, index),
+                            ...weights.slice(index + 1),
+                          ]);
+                          setAlternatives([
+                            ...alternatives.slice(0, index),
+                            ...alternatives.slice(index + 1),
+                          ]);
                           setNumAlternatives(numAlternatives - 1);
                         }}
-                      ></Button>
+                      />
                     )}
                   </div>
                 ))}
             </div>
+            {/* Alternatives */}
             <div style={{ flex: 7 }}>
-              {alternatives.length === 0 && renderLoadingDivs()}
-              {alternatives.length > 0 &&
-                alternatives.map((alternative, index) => (
-                  <div
-                    style={{
-                      margin: "0",
-                      height: "70px",
-                      marginRight: "20px",
-                      marginBottom: "10px",
-                    }}
-                    key={"a" + index}
-                  >
-                    <textarea
+              {loadingAlternatives
+                ? renderLoadingAlternatives(numAlternatives + 1)
+                : alternatives.map((alternative, index) => (
+                    <div
                       style={{
-                        fontSize: "1.2rem",
-                        width: "100%",
-                        boxSizing: "border-box",
-                        fontWeight: "400",
-                        fontFamily: "freight-text-pro, serif",
-                        padding: "8px",
-                        resize: "none",
-                        border: "1px solid #d1d1d1",
-                        borderRadius: "4px",
-                        height: "100%",
+                        margin: "0",
+                        height: "70px",
+                        marginRight: "20px",
+                        marginBottom: "10px",
                       }}
-                      value={alternative}
-                      onChange={(e) => {
-                        const newAlternatives = [...alternatives];
-                        newAlternatives[index] = e.target.value;
-                        setAlternatives(newAlternatives);
-                      }}
-                    />
-                  </div>
-                ))}
-              {requestedNewInterpretation && (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    padding: "20px",
-                    paddingLeft: "0",
-                  }}
-                >
-                  <SkeletonItem />
-                </div>
-              )}
-              {alternatives.length > 0 && (
+                      key={"a" + index}
+                    >
+                      <textarea
+                        style={{
+                          fontSize: "1.2rem",
+                          width: "100%",
+                          boxSizing: "border-box",
+                          fontWeight: "400",
+                          fontFamily: "freight-text-pro, serif",
+                          padding: "8px",
+                          resize: "none",
+                          border: "1px solid #d1d1d1",
+                          borderRadius: "4px",
+                          height: "100%",
+                        }}
+                        value={alternative}
+                        onChange={(e) => {
+                          const newAlternatives = [...alternatives];
+                          newAlternatives[index] = e.target.value;
+                          setAlternatives(newAlternatives);
+                        }}
+                      />
+                    </div>
+                  ))}
+              {loadingNewAlternative && renderLoadingAlternatives(1)}
+              {!loadingAlternatives && !loadingNewAlternative && (
                 <div style={{ marginRight: "20px" }}>
-                  {requestedNewInterpretation === false ? (
-                    <Button
-                      icon={<CalendarMonthRegular />}
-                      style={{
-                        width: "100%",
-                        height: "43px",
-                        fontSize: "1.2rem",
-                        fontWeight: "400",
-                        fontFamily: "freight-text-pro, serif",
-                      }}
-                      onClick={doNewAlternative}
-                    >
-                      Add another interpretation
-                    </Button>
-                  ) : (
-                    <Button
-                      icon={<CalendarMonthRegular />}
-                      style={{
-                        width: "100%",
-                        height: "43px",
-                        fontSize: "1.2rem",
-                        fontWeight: "400",
-                        fontFamily: "freight-text-pro, serif",
-                      }}
-                      onClick={doNewAlternative}
-                      disabled
-                    >
-                      Add another interpretation
-                    </Button>
-                  )}
+                  <Button
+                    icon={<CalendarMonthRegular />}
+                    style={{
+                      width: "100%",
+                      height: "43px",
+                      fontSize: "1.2rem",
+                      fontWeight: "400",
+                      fontFamily: "freight-text-pro, serif",
+                    }}
+                    onClick={doNewAlternative}
+                    disabled={loadingNewAlternative}
+                  >
+                    Add another interpretation
+                  </Button>
                 </div>
               )}
             </div>
+            {/* Weights */}
             <div style={{ flex: 2 }}>
-              {alternatives.length > 0 &&
-                weights.length > 0 &&
+              {!loadingAlternatives &&
                 weights.map((weight, index) => (
                   <div
                     key={"w" + index}
@@ -636,26 +631,31 @@ function App() {
                           borderRadius: "4px",
                         },
                       }}
+                      onChange={(value) => {
+                        const newWeights = [...weights];
+                        newWeights[index] = value;
+                        setWeights(newWeights);
+                      }}
                     />
                   </div>
                 ))}
             </div>
           </div>
+          {/* Message */}
           <div style={{ flex: 2 }}>
-            {alternatives.length === 0 && (
+            {loadingMessage ? (
               <div
                 style={{
                   display: "flex",
                   justifyContent: "center",
                   alignItems: "center",
                   padding: "20px",
-                  paddingLeft: "0",
+                  paddingRight: "0",
                 }}
               >
                 <SkeletonItem />
               </div>
-            )}
-            {alternatives.length > 0 && (
+            ) : (
               <div>
                 <div
                   style={{
