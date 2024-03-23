@@ -17,13 +17,11 @@ function App() {
   const [started, setStarted] = useState(false);
 
   //
-  const [numInterpretations, setNumInterpretations] = useState(1);
-  //
   const [utterance, setUtterance] = useState("");
   //
-  const [alternatives, setAlternatives] = useState([]);
+  const [numAlternatives, setNumAlternatives] = useState(1);
   //
-  const [hasAlternatives, setHaveAlternatives] = useState(false);
+  const [alternatives, setAlternatives] = useState([]);
   //
   const [weights, setWeights] = useState([]);
   //
@@ -45,7 +43,7 @@ function App() {
         },
         body: JSON.stringify({
           utterance,
-          numInterpretations,
+          numInterpretations: numAlternatives,
         }),
       });
       const alternativeData = await alternativesResponse.json();
@@ -55,9 +53,8 @@ function App() {
       }
 
       setAlternatives(alternativeData.alternatives);
-      setHaveAlternatives(true);
       const newWeights = [];
-      for (let i = 0; i < numInterpretations + 1; i++) {
+      for (let i = 0; i < numAlternatives + 1; i++) {
         newWeights.push(1);
       }
 
@@ -68,7 +65,7 @@ function App() {
         },
         body: JSON.stringify({
           utterance,
-          numInterpretations,
+          numInterpretations: numAlternatives,
           alternatives: alternativeData.alternatives,
         }),
       });
@@ -89,7 +86,7 @@ function App() {
         },
         body: JSON.stringify({
           utterance,
-          numInterpretations,
+          numInterpretations: numAlternatives,
           alternatives: alternativeData.alternatives,
           scenario: scenarioData.scenario,
         }),
@@ -131,7 +128,7 @@ function App() {
         const newWeights = [...weights];
         newWeights.push(1);
         setWeights(newWeights);
-        setNumInterpretations(numInterpretations + 1);
+        setNumAlternatives(numAlternatives + 1);
       }
       setRequestedNewInterpretation(false);
     } catch (error) {
@@ -156,7 +153,6 @@ function App() {
       const data = await response.json();
       if (data.message) {
         setSupermessage(data.message);
-        setHaveAlternatives(true);
       }
     } catch (error) {
       console.error("Error posting data:", error);
@@ -166,17 +162,16 @@ function App() {
   //
   const restart = () => {
     setStarted(false);
-    setHaveAlternatives(false);
     setAlternatives([]);
     setUtterance("");
-    setNumInterpretations(1);
+    setNumAlternatives(1);
     setWeights([]);
   };
 
   //
   const renderLoadingDivs = () => {
     const divs = [];
-    for (let i = 0; i < numInterpretations + 1; i++) {
+    for (let i = 0; i < numAlternatives + 1; i++) {
       divs.push(
         <div
           key={"sk" + i}
@@ -409,7 +404,7 @@ function App() {
                 <NumericInput
                   min={1}
                   max={10}
-                  value={numInterpretations}
+                  value={numAlternatives}
                   style={{
                     input: {
                       fontSize: "1.2rem",
@@ -424,7 +419,7 @@ function App() {
                       borderRadius: "4px",
                     },
                   }}
-                  onChange={setNumInterpretations}
+                  onChange={setNumAlternatives}
                 />
               </div>
               <div>
@@ -484,10 +479,7 @@ function App() {
                       fontWeight: "400",
                       fontFamily: "freight-text-pro, serif",
                     }}
-                    onClick={() => {
-                      handleSubmit();
-                      setHaveAlternatives(false);
-                    }}
+                    onClick={handleSubmit}
                   >
                     Restart
                   </Button>
@@ -501,7 +493,7 @@ function App() {
         <div style={{ display: "flex", marginTop: "2rem" }}>
           <div style={{ flex: 3, display: "flex" }}>
             <div style={{ flex: 1 }}>
-              {hasAlternatives &&
+              {alternatives.length > 0 &&
                 weights.length > 0 &&
                 weights.map((weight, index) => (
                   <div
@@ -526,7 +518,7 @@ function App() {
                           const newAlternatives = [...alternatives];
                           newAlternatives.splice(index, 1);
                           setAlternatives(newAlternatives);
-                          setNumInterpretations(numInterpretations - 1);
+                          setNumAlternatives(numAlternatives - 1);
                         }}
                       ></Button>
                     )}
@@ -534,9 +526,8 @@ function App() {
                 ))}
             </div>
             <div style={{ flex: 7 }}>
-              {!hasAlternatives && renderLoadingDivs()}
-              {hasAlternatives &&
-                alternatives.length > 0 &&
+              {alternatives.length === 0 && renderLoadingDivs()}
+              {alternatives.length > 0 &&
                 alternatives.map((alternative, index) => (
                   <div
                     style={{
@@ -582,7 +573,7 @@ function App() {
                   <SkeletonItem />
                 </div>
               )}
-              {hasAlternatives && (
+              {alternatives.length > 0 && (
                 <div style={{ marginRight: "20px" }}>
                   {requestedNewInterpretation === false ? (
                     <Button
@@ -618,7 +609,7 @@ function App() {
               )}
             </div>
             <div style={{ flex: 2 }}>
-              {hasAlternatives &&
+              {alternatives.length > 0 &&
                 weights.length > 0 &&
                 weights.map((weight, index) => (
                   <div
@@ -652,7 +643,7 @@ function App() {
             </div>
           </div>
           <div style={{ flex: 2 }}>
-            {!hasAlternatives && (
+            {alternatives.length === 0 && (
               <div
                 style={{
                   display: "flex",
@@ -665,7 +656,7 @@ function App() {
                 <SkeletonItem />
               </div>
             )}
-            {hasAlternatives && (
+            {alternatives.length > 0 && (
               <div>
                 <div
                   style={{
@@ -701,10 +692,7 @@ function App() {
                       fontWeight: "400",
                       fontFamily: "freight-text-pro, serif",
                     }}
-                    onClick={() => {
-                      fetchMessage();
-                      setHaveAlternatives(false);
-                    }}
+                    onClick={fetchMessage}
                   >
                     Regenerate
                   </Button>
