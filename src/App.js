@@ -16,26 +16,19 @@ import "./App.css";
 function App() {
   const [started, setStarted] = useState(false);
 
-  //
   const [utterance, setUtterance] = useState("");
-  //
   const [numAlternatives, setNumAlternatives] = useState(1);
-  //
   const [alternatives, setAlternatives] = useState([]);
-  //
   const [weights, setWeights] = useState([]);
   //
   const [requestedNewInterpretation, setRequestedNewInterpretation] =
     useState(false);
-  //
   const [supermessage, setSupermessage] = useState("");
 
-  //
-  const handleSubmit = async () => {
+  const doCompleteFlow = async () => {
     setStarted(true);
 
     try {
-      // Step 1:
       const alternativesResponse = await fetch("/api/postAlternatives", {
         method: "POST",
         headers: {
@@ -46,17 +39,17 @@ function App() {
           numInterpretations: numAlternatives,
         }),
       });
-      const alternativeData = await alternativesResponse.json();
-
-      if (!alternativeData.alternatives) {
+      const { alternatives } = await alternativesResponse.json();
+      if (!alternatives) {
         throw new Error("No alternatives returned");
       }
 
-      setAlternatives(alternativeData.alternatives);
       const newWeights = [];
       for (let i = 0; i < numAlternatives + 1; i++) {
         newWeights.push(1);
       }
+      setAlternatives(alternatives);
+      setWeights(newWeights);
 
       const scenarioResponse = await fetch("/api/postScenario", {
         method: "POST",
@@ -64,20 +57,13 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          utterance,
-          numInterpretations: numAlternatives,
-          alternatives: alternativeData.alternatives,
+          alternatives,
         }),
       });
-      const scenarioData = await scenarioResponse.json();
-
-      console.log(scenarioData);
-
-      if (!scenarioData.scenario) {
+      const { scenario } = await scenarioResponse.json();
+      if (!scenario) {
         throw new Error("No scenario returned");
       }
-
-      console.log(scenarioData.scenario);
 
       const messageResponse = await fetch("/api/postMessage", {
         method: "POST",
@@ -85,30 +71,25 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          utterance,
-          numInterpretations: numAlternatives,
-          alternatives: alternativeData.alternatives,
-          scenario: scenarioData.scenario,
+          alternatives,
+          scenario,
         }),
       });
-      const messageData = await messageResponse.json();
+      const { message } = await messageResponse.json();
 
-      if (!messageData.message) {
+      if (!message) {
         throw new Error("No message returned");
       }
-
-      console.log(messageData.message);
-      setSupermessage(messageData.message);
+      setSupermessage(message);
     } catch (error) {
       console.error("Error posting data:", error);
     }
   };
 
-  //
-  const fetchNewInterpretation = async () => {
+  const doNewAlternative = async () => {
     setRequestedNewInterpretation(true);
     try {
-      const response = await fetch("/api/getnew", {
+      const newAlternativeResponse = await fetch("/api/postNewAlternative", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -117,19 +98,24 @@ function App() {
           alternatives,
         }),
       });
-      const data = await response.json();
-      if (data.newalternative) {
-        console.log(data.newalternative);
-        let newalternative = data.newalternative;
-        newalternative = newalternative.substring(1, newalternative.length - 1);
-        const newAlternatives = [...alternatives];
-        newAlternatives.push(newalternative);
-        setAlternatives(newAlternatives);
-        const newWeights = [...weights];
-        newWeights.push(1);
-        setWeights(newWeights);
-        setNumAlternatives(numAlternatives + 1);
+      const newAlternativeData = await newAlternativeResponse.json();
+
+      const { newAlternative } = newAlternativeData;
+
+      if (!newAlternative) {
+        throw new Error("No new alternative returned");
       }
+
+      // remove quotes
+      const newAlternativeSanitized = newAlternative.substring(
+        1,
+        newAlternative.length - 1
+      );
+
+      setAlternatives([...alternatives, newAlternativeSanitized]);
+      setWeights([...weights, 1]);
+      setNumAlternatives(numAlternatives + 1);
+
       setRequestedNewInterpretation(false);
     } catch (error) {
       console.error("Error posting data:", error);
@@ -137,23 +123,38 @@ function App() {
     }
   };
 
-  //
-  const fetchMessage = async () => {
+  const doNewMessage = async () => {
     try {
-      const response = await fetch("/api/getmessage", {
+      const scenarioResponse = await fetch("/api/postScenario", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           alternatives,
-          weights,
         }),
       });
-      const data = await response.json();
-      if (data.message) {
-        setSupermessage(data.message);
+      const { scenario } = await scenarioResponse.json();
+      if (!scenario) {
+        throw new Error("No scenario returned");
       }
+
+      const messageResponse = await fetch("/api/postMessage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          alternatives,
+          scenario,
+        }),
+      });
+      const { message } = await messageResponse.json();
+
+      if (!message) {
+        throw new Error("No message returned");
+      }
+      setSupermessage(message);
     } catch (error) {
       console.error("Error posting data:", error);
     }
@@ -448,9 +449,7 @@ function App() {
                         fontWeight: "400",
                         fontFamily: "freight-text-pro, serif",
                       }}
-                      onClick={() => {
-                        handleSubmit();
-                      }}
+                      onClick={doCompleteFlow}
                     >
                       Start
                     </Button>
@@ -479,7 +478,7 @@ function App() {
                       fontWeight: "400",
                       fontFamily: "freight-text-pro, serif",
                     }}
-                    onClick={handleSubmit}
+                    onClick={doCompleteFlow}
                   >
                     Restart
                   </Button>
@@ -585,7 +584,7 @@ function App() {
                         fontWeight: "400",
                         fontFamily: "freight-text-pro, serif",
                       }}
-                      onClick={fetchNewInterpretation}
+                      onClick={doNewAlternative}
                     >
                       Add another interpretation
                     </Button>
@@ -599,7 +598,7 @@ function App() {
                         fontWeight: "400",
                         fontFamily: "freight-text-pro, serif",
                       }}
-                      onClick={fetchNewInterpretation}
+                      onClick={doNewAlternative}
                       disabled
                     >
                       Add another interpretation
@@ -692,7 +691,7 @@ function App() {
                       fontWeight: "400",
                       fontFamily: "freight-text-pro, serif",
                     }}
-                    onClick={fetchMessage}
+                    onClick={doNewMessage}
                   >
                     Regenerate
                   </Button>
