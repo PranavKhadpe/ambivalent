@@ -1,158 +1,196 @@
-import logo from "./logo.svg";
-import header from "./ambivalent.png";
-import intent from "./intent.png";
-import {
-  Input,
-  Button,
-  Skeleton,
-  SkeletonItem,
-} from "@fluentui/react-components";
+import { Button, SkeletonItem } from "@fluentui/react-components";
 import {
   AppsAddInRegular,
-  DeleteRegular,
-  CalendarMonthRegular,
   ArrowSyncCircleRegular,
+  CalendarMonthRegular,
+  DeleteRegular,
 } from "@fluentui/react-icons";
+import header from "./ambivalent.png";
 
+import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 import NumericInput from "react-numeric-input";
 import TextareaAutosize from "react-textarea-autosize";
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
 
 function App() {
-  const [numinterpretations, setNumInterpretations] = useState(1);
+  const [started, setStarted] = useState(false);
+
   const [utterance, setUtterance] = useState("");
+  const [numAlternatives, setNumAlternatives] = useState(1);
   const [alternatives, setAlternatives] = useState([]);
-  const [start, setStart] = useState(false);
-  const [haveCandidates, setHaveCandidates] = useState(false);
   const [weights, setWeights] = useState([]);
   const [requestedNewInterpretation, setRequestedNewInterpretation] =
     useState(false);
   const [supermessage, setSupermessage] = useState("");
 
-  useEffect(() => {
-    console.log(utterance);
-  }, [utterance]);
+  const [loadingAlternatives, setLoadingAlternatives] = useState(true);
+  const [loadingNewAlternative, setLoadingNewAlternative] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(true);
 
-  useEffect(() => {
-    console.log(numinterpretations);
-  }, [numinterpretations]);
-
-  const ChangeNums = (e) => {
-    setNumInterpretations(e);
-  };
-
-  useEffect(() => {
-    console.log("Weights:" + weights);
-  }, [weights]);
-
-  const handleSubmit = async () => {
-    setStart(true);
+  const doCompleteFlow = async () => {
+    setStarted(true);
+    setLoadingAlternatives(true);
+    setLoadingNewAlternative(false);
+    setLoadingMessage(true);
 
     try {
-      const response = await fetch("/api/obscure", {
+      const alternativesResponse = await fetch("/api/postAlternatives", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           utterance,
-          numinterpretations,
+          numInterpretations: numAlternatives,
         }),
       });
-      const data = await response.json();
-      if (data.alternatives) {
-        const alternativesArray = JSON.parse(data.alternatives);
-        if (alternativesArray.length > numinterpretations) {
-          alternativesArray.splice(numinterpretations);
-        }
-        //add utterance to the start of the array
-        alternativesArray.unshift(utterance);
-        setAlternatives(alternativesArray); // Update the state with the parsed array
-        setHaveCandidates(true);
-        let intentweights = [];
-        for (let i = 0; i < numinterpretations + 1; i++) {
-          intentweights.push(1);
-        }
-
-        setWeights(intentweights);
+      const { alternatives } = await alternativesResponse.json();
+      if (!alternatives) {
+        throw new Error("No alternatives returned");
       }
-      if (data.message) {
-        console.log(data.message);
-        setSupermessage(data.message);
-      }
-    } catch (error) {
-      console.error("Error posting data:", error);
-    }
-  };
 
-  const fetchNewInterpretation = async () => {
-    setRequestedNewInterpretation(true);
-    try {
-      const response = await fetch("/api/getnew", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          alternatives,
-        }),
-      });
-      const data = await response.json();
-      if (data.newalternative) {
-        console.log(data.newalternative);
-        let newalternative = data.newalternative;
-        newalternative = newalternative.substring(1, newalternative.length - 1);
-        const newAlternatives = [...alternatives];
-        newAlternatives.push(newalternative);
-        setAlternatives(newAlternatives);
-        const newWeights = [...weights];
+      const newWeights = [];
+      for (let i = 0; i < numAlternatives + 1; i++) {
         newWeights.push(1);
-        setWeights(newWeights);
-        setNumInterpretations(numinterpretations + 1);
       }
-      setRequestedNewInterpretation(false);
-    } catch (error) {
-      console.error("Error posting data:", error);
-      setRequestedNewInterpretation(false);
-    }
-  };
+      setAlternatives(alternatives);
+      setWeights(newWeights);
+      setLoadingAlternatives(false);
 
-  const fetchMessage = async () => {
-    try {
-      const response = await fetch("/api/getmessage", {
+      const scenarioResponse = await fetch("/api/postScenario", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           alternatives,
-          weights,
         }),
       });
-      const data = await response.json();
-      if (data.message) {
-        setSupermessage(data.message);
-        setHaveCandidates(true);
+      const { scenario } = await scenarioResponse.json();
+      if (!scenario) {
+        throw new Error("No scenario returned");
       }
+
+      const messageResponse = await fetch("/api/postMessage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          alternatives,
+          scenario,
+        }),
+      });
+      const { message } = await messageResponse.json();
+
+      if (!message) {
+        throw new Error("No message returned");
+      }
+      setSupermessage(message);
+      setLoadingMessage(false);
     } catch (error) {
       console.error("Error posting data:", error);
     }
   };
 
-  const goToStart = () => {
-    setStart(false);
-    setHaveCandidates(false);
-    setAlternatives([]);
-    setUtterance("");
-    setNumInterpretations(1);
-    setWeights([]);
+  const doNewAlternative = async () => {
+    setRequestedNewInterpretation(true);
+    setLoadingNewAlternative(true);
+
+    try {
+      const newAlternativeResponse = await fetch("/api/postNewAlternative", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          alternatives,
+        }),
+      });
+      const newAlternativeData = await newAlternativeResponse.json();
+
+      const { newAlternative } = newAlternativeData;
+
+      if (!newAlternative) {
+        throw new Error("No new alternative returned");
+      }
+
+      // remove quotes
+      const newAlternativeSanitized = newAlternative.substring(
+        1,
+        newAlternative.length - 1
+      );
+
+      setAlternatives([...alternatives, newAlternativeSanitized]);
+      setWeights([...weights, 1]);
+      setNumAlternatives(numAlternatives + 1);
+    } catch (error) {
+      console.error("Error posting data:", error);
+    } finally {
+      setRequestedNewInterpretation(false);
+      setLoadingNewAlternative(false);
+    }
   };
 
-  const renderLoadingDivs = () => {
+  const doNewMessage = async () => {
+    setLoadingMessage(true);
+
+    try {
+      const scenarioResponse = await fetch("/api/postScenario", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          alternatives,
+        }),
+      });
+      const { scenario } = await scenarioResponse.json();
+      if (!scenario) {
+        throw new Error("No scenario returned");
+      }
+
+      const messageResponse = await fetch("/api/postMessage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          alternatives,
+          scenario,
+        }),
+      });
+      const { message } = await messageResponse.json();
+
+      if (!message) {
+        throw new Error("No message returned");
+      }
+      setSupermessage(message);
+    } catch (error) {
+      console.error("Error posting data:", error);
+    } finally {
+      setLoadingMessage(false);
+    }
+  };
+
+  const restart = () => {
+    setStarted(false);
+    setUtterance("");
+    setNumAlternatives(1);
+    setAlternatives([]);
+    setWeights([]);
+    setRequestedNewInterpretation(false);
+    setSupermessage("");
+    setLoadingAlternatives(true);
+    setLoadingNewAlternative(false);
+    setLoadingMessage(true);
+  };
+
+  //
+  const renderLoadingAlternatives = (numSkeletons) => {
     const divs = [];
-    for (let i = 0; i < numinterpretations + 1; i++) {
+    for (let i = 0; i < numSkeletons; i++) {
       divs.push(
         <div
           key={"sk" + i}
@@ -181,7 +219,7 @@ function App() {
           }}
         >
           <AnimatePresence>
-            {!start ? (
+            {!started ? (
               <motion.h1
                 key="content"
                 style={{
@@ -221,7 +259,7 @@ function App() {
                     display: "flex",
                     cursor: "pointer",
                   }}
-                  onClick={goToStart}
+                  onClick={restart}
                 >
                   <svg
                     height="20"
@@ -246,7 +284,7 @@ function App() {
                         stroke-linejoin="round"
                         transform="translate(6 6)"
                       >
-                        <path d="m.5 7.5v-7h7"></path>{" "}
+                        <path d="m.5 7.5v-7h7"></path>
                         <path d="m.5.5 8 8"></path>
                       </g>
                     </g>
@@ -278,22 +316,12 @@ function App() {
           ></hr>
         </div>
       </div>
-      {!start && (
+      {!started && (
         <div
           style={{
             margin: "auto",
           }}
         >
-          {/* <p
-          style={{
-            fontSize: "1.6rem",
-            fontWeight: "bold",
-            color: "rgb(28, 159, 252)",
-            fontFamily: "freight-text-pro, serif",
-          }}
-        >
-          How it works
-        </p> */}
           <AnimatePresence>
             <motion.img
               style={{ width: "100%" }}
@@ -338,18 +366,6 @@ function App() {
           </AnimatePresence>
         </div>
       )}
-      {/* <p
-        style={{
-          fontSize: "1.6rem",
-          fontWeight: "bold",
-          width: "50%",
-          margin: "auto",
-          color: "rgb(28, 159, 252)",
-          fontFamily: "freight-text-pro, serif",
-        }}
-      >
-        Try it
-      </p> */}
       <motion.div
         style={{
           margin: "auto",
@@ -407,7 +423,7 @@ function App() {
                 <NumericInput
                   min={1}
                   max={10}
-                  value={numinterpretations}
+                  value={numAlternatives}
                   style={{
                     input: {
                       fontSize: "1.2rem",
@@ -422,11 +438,11 @@ function App() {
                       borderRadius: "4px",
                     },
                   }}
-                  onChange={ChangeNums}
+                  onChange={setNumAlternatives}
                 />
               </div>
               <div>
-                {start == false ? (
+                {started === false ? (
                   utterance.trim() === "" ? (
                     <Button
                       size="large"
@@ -451,9 +467,7 @@ function App() {
                         fontWeight: "400",
                         fontFamily: "freight-text-pro, serif",
                       }}
-                      onClick={() => {
-                        handleSubmit();
-                      }}
+                      onClick={doCompleteFlow}
                     >
                       Start
                     </Button>
@@ -482,10 +496,7 @@ function App() {
                       fontWeight: "400",
                       fontFamily: "freight-text-pro, serif",
                     }}
-                    onClick={() => {
-                      handleSubmit();
-                      setHaveCandidates(false);
-                    }}
+                    onClick={doCompleteFlow}
                   >
                     Restart
                   </Button>
@@ -495,12 +506,12 @@ function App() {
           </div>
         </div>
       </motion.div>
-      {start && (
+      {started && (
         <div style={{ display: "flex", marginTop: "2rem" }}>
           <div style={{ flex: 3, display: "flex" }}>
+            {/* Deletes */}
             <div style={{ flex: 1 }}>
-              {haveCandidates &&
-                weights.length > 0 &&
+              {!loadingAlternatives &&
                 weights.map((weight, index) => (
                   <div
                     key={"d" + index}
@@ -517,107 +528,83 @@ function App() {
                           width: "100%",
                         }}
                         onClick={() => {
-                          console.log(index);
+                          console.log("Deleting", index);
                           const newWeights = [...weights];
                           newWeights.splice(index, 1);
-                          setWeights(newWeights);
-                          const newAlternatives = [...alternatives];
-                          newAlternatives.splice(index, 1);
-                          setAlternatives(newAlternatives);
-                          setNumInterpretations(numinterpretations - 1);
+                          setWeights([
+                            ...weights.slice(0, index),
+                            ...weights.slice(index + 1),
+                          ]);
+                          setAlternatives([
+                            ...alternatives.slice(0, index),
+                            ...alternatives.slice(index + 1),
+                          ]);
+                          setNumAlternatives(numAlternatives - 1);
                         }}
-                      ></Button>
+                      />
                     )}
                   </div>
                 ))}
             </div>
+            {/* Alternatives */}
             <div style={{ flex: 7 }}>
-              {!haveCandidates && renderLoadingDivs()}
-              {haveCandidates &&
-                alternatives.length > 0 &&
-                alternatives.map((alternative, index) => (
-                  <div
-                    style={{
-                      margin: "0",
-                      height: "70px",
-                      marginRight: "20px",
-                      marginBottom: "10px",
-                    }}
-                    key={"a" + index}
-                  >
-                    <textarea
+              {loadingAlternatives
+                ? renderLoadingAlternatives(numAlternatives + 1)
+                : alternatives.map((alternative, index) => (
+                    <div
                       style={{
-                        fontSize: "1.2rem",
-                        width: "100%",
-                        boxSizing: "border-box",
-                        fontWeight: "400",
-                        fontFamily: "freight-text-pro, serif",
-                        padding: "8px",
-                        resize: "none",
-                        border: "1px solid #d1d1d1",
-                        borderRadius: "4px",
-                        height: "100%",
+                        margin: "0",
+                        height: "70px",
+                        marginRight: "20px",
+                        marginBottom: "10px",
                       }}
-                      value={alternative}
-                      onChange={(e) => {
-                        const newAlternatives = [...alternatives];
-                        newAlternatives[index] = e.target.value;
-                        setAlternatives(newAlternatives);
-                      }}
-                    />
-                  </div>
-                ))}
-              {requestedNewInterpretation && (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    padding: "20px",
-                    paddingLeft: "0",
-                  }}
-                >
-                  <SkeletonItem />
-                </div>
-              )}
-              {haveCandidates && (
+                      key={"a" + index}
+                    >
+                      <textarea
+                        style={{
+                          fontSize: "1.2rem",
+                          width: "100%",
+                          boxSizing: "border-box",
+                          fontWeight: "400",
+                          fontFamily: "freight-text-pro, serif",
+                          padding: "8px",
+                          resize: "none",
+                          border: "1px solid #d1d1d1",
+                          borderRadius: "4px",
+                          height: "100%",
+                        }}
+                        value={alternative}
+                        onChange={(e) => {
+                          const newAlternatives = [...alternatives];
+                          newAlternatives[index] = e.target.value;
+                          setAlternatives(newAlternatives);
+                        }}
+                      />
+                    </div>
+                  ))}
+              {loadingNewAlternative && renderLoadingAlternatives(1)}
+              {!loadingAlternatives && !loadingNewAlternative && (
                 <div style={{ marginRight: "20px" }}>
-                  {requestedNewInterpretation == false ? (
-                    <Button
-                      icon={<CalendarMonthRegular />}
-                      style={{
-                        width: "100%",
-                        height: "43px",
-                        fontSize: "1.2rem",
-                        fontWeight: "400",
-                        fontFamily: "freight-text-pro, serif",
-                      }}
-                      onClick={fetchNewInterpretation}
-                    >
-                      Add another interpretation
-                    </Button>
-                  ) : (
-                    <Button
-                      icon={<CalendarMonthRegular />}
-                      style={{
-                        width: "100%",
-                        height: "43px",
-                        fontSize: "1.2rem",
-                        fontWeight: "400",
-                        fontFamily: "freight-text-pro, serif",
-                      }}
-                      onClick={fetchNewInterpretation}
-                      disabled
-                    >
-                      Add another interpretation
-                    </Button>
-                  )}
+                  <Button
+                    icon={<CalendarMonthRegular />}
+                    style={{
+                      width: "100%",
+                      height: "43px",
+                      fontSize: "1.2rem",
+                      fontWeight: "400",
+                      fontFamily: "freight-text-pro, serif",
+                    }}
+                    onClick={doNewAlternative}
+                    disabled={loadingNewAlternative}
+                  >
+                    Add another interpretation
+                  </Button>
                 </div>
               )}
             </div>
+            {/* Weights */}
             <div style={{ flex: 2 }}>
-              {haveCandidates &&
-                weights.length > 0 &&
+              {!loadingAlternatives &&
                 weights.map((weight, index) => (
                   <div
                     key={"w" + index}
@@ -644,26 +631,31 @@ function App() {
                           borderRadius: "4px",
                         },
                       }}
+                      onChange={(value) => {
+                        const newWeights = [...weights];
+                        newWeights[index] = value;
+                        setWeights(newWeights);
+                      }}
                     />
                   </div>
                 ))}
             </div>
           </div>
+          {/* Message */}
           <div style={{ flex: 2 }}>
-            {!haveCandidates && (
+            {loadingMessage ? (
               <div
                 style={{
                   display: "flex",
                   justifyContent: "center",
                   alignItems: "center",
                   padding: "20px",
-                  paddingLeft: "0",
+                  paddingRight: "0",
                 }}
               >
                 <SkeletonItem />
               </div>
-            )}
-            {haveCandidates && (
+            ) : (
               <div>
                 <div
                   style={{
@@ -699,10 +691,7 @@ function App() {
                       fontWeight: "400",
                       fontFamily: "freight-text-pro, serif",
                     }}
-                    onClick={() => {
-                      fetchMessage();
-                      setHaveCandidates(false);
-                    }}
+                    onClick={doNewMessage}
                   >
                     Regenerate
                   </Button>
