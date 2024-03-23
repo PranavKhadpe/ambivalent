@@ -9,13 +9,13 @@ module.exports = async (req, res) => {
     // Log the received data
     console.log("Received data:", req.body);
 
-    const { utterance, numinterpretations } = req.body;
+    const { utterance, numInterpretations } = req.body;
 
     const prompt =
       'I have an intent that I want to convey but I want to obscure it in my message by also including other intents. Each intent is unique.\n##Original Intent\nMy original intent is the following: "' +
       utterance +
       '". \n##Number of Requested Intents\nI want to include the following number of alternate intents alongside my original intent: ' +
-      numinterpretations +
+      numInterpretations +
       '.\n##Response Format\nYour response should be an array with length equal to the number of requested intents. Each entry in the array should be one alternate intent.  If 3 intents are requested, the format of the array is : ["Intent 1", "Intent 2", "Intent 3"]. Your message should only include this array and end in the closing brace of the array\']\'. That should be the last character.\n##Generation procedure\n1. If the number of requested intents is 1, then the alternate intent, Intent 1, should be a complete contradiction of the Original Intent.\n2. If the number of requested intents is 2, then the alternate intent, Intent 1, should be a complete contradiction of the Original Intent. Intent 2 should be something that is unrelated to both the Original Intent and Intent 1.\n3. If the number of requested intents is 3 or more, then the alternate intent, Intent 1, should be a complete contradiction of the Original Intent. Intent 2 should be something that is unrelated to both the Original Intent and Intent 1. Every subsequent intent should be unrelated to all intents that have come prior.\n##Final Check\nMake sure that the length of the array in the response is equal to the number of requested intents';
 
     console.log(prompt);
@@ -37,8 +37,8 @@ module.exports = async (req, res) => {
     console.log("Response data:", response.choices[0].message.content);
 
     let alternativesArray = JSON.parse(response.choices[0].message.content);
-    if (alternativesArray.length > numinterpretations) {
-      alternativesArray.splice(numinterpretations);
+    if (alternativesArray.length > numInterpretations) {
+      alternativesArray.splice(numInterpretations);
     }
     //add utterance to the start of the array
     alternativesArray.unshift(utterance);

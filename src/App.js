@@ -1,92 +1,113 @@
-import logo from "./logo.svg";
-import header from "./ambivalent.png";
-import intent from "./intent.png";
-import {
-  Input,
-  Button,
-  Skeleton,
-  SkeletonItem,
-} from "@fluentui/react-components";
+import { Button, SkeletonItem } from "@fluentui/react-components";
 import {
   AppsAddInRegular,
-  DeleteRegular,
-  CalendarMonthRegular,
   ArrowSyncCircleRegular,
+  CalendarMonthRegular,
+  DeleteRegular,
 } from "@fluentui/react-icons";
+import header from "./ambivalent.png";
 
+import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 import NumericInput from "react-numeric-input";
 import TextareaAutosize from "react-textarea-autosize";
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
 
 function App() {
-  const [numinterpretations, setNumInterpretations] = useState(1);
+  const [started, setStarted] = useState(false);
+
+  //
+  const [numInterpretations, setNumInterpretations] = useState(1);
+  //
   const [utterance, setUtterance] = useState("");
+  //
   const [alternatives, setAlternatives] = useState([]);
-  const [start, setStart] = useState(false);
-  const [haveCandidates, setHaveCandidates] = useState(false);
+  //
+  const [hasAlternatives, setHaveAlternatives] = useState(false);
+  //
   const [weights, setWeights] = useState([]);
+  //
   const [requestedNewInterpretation, setRequestedNewInterpretation] =
     useState(false);
+  //
   const [supermessage, setSupermessage] = useState("");
 
-  useEffect(() => {
-    console.log(utterance);
-  }, [utterance]);
-
-  useEffect(() => {
-    console.log(numinterpretations);
-  }, [numinterpretations]);
-
-  const ChangeNums = (e) => {
-    setNumInterpretations(e);
-  };
-
-  useEffect(() => {
-    console.log("Weights:" + weights);
-  }, [weights]);
-
+  //
   const handleSubmit = async () => {
-    setStart(true);
+    setStarted(true);
 
     try {
-      const response = await fetch("/api/obscure", {
+      // Step 1:
+      const alternativesResponse = await fetch("/api/postAlternatives", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           utterance,
-          numinterpretations,
+          numInterpretations,
         }),
       });
-      const data = await response.json();
-      if (data.alternatives) {
-        const alternativesArray = JSON.parse(data.alternatives);
-        if (alternativesArray.length > numinterpretations) {
-          alternativesArray.splice(numinterpretations);
-        }
-        //add utterance to the start of the array
-        alternativesArray.unshift(utterance);
-        setAlternatives(alternativesArray); // Update the state with the parsed array
-        setHaveCandidates(true);
-        let intentweights = [];
-        for (let i = 0; i < numinterpretations + 1; i++) {
-          intentweights.push(1);
-        }
+      const alternativeData = await alternativesResponse.json();
 
-        setWeights(intentweights);
+      if (!alternativeData.alternatives) {
+        throw new Error("No alternatives returned");
       }
-      if (data.message) {
-        console.log(data.message);
-        setSupermessage(data.message);
+
+      setAlternatives(alternativeData.alternatives);
+      setHaveAlternatives(true);
+      const newWeights = [];
+      for (let i = 0; i < numInterpretations + 1; i++) {
+        newWeights.push(1);
       }
+
+      const scenarioResponse = await fetch("/api/postScenario", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          utterance,
+          numInterpretations,
+          alternatives: alternativeData.alternatives,
+        }),
+      });
+      const scenarioData = await scenarioResponse.json();
+
+      console.log(scenarioData);
+
+      if (!scenarioData.scenario) {
+        throw new Error("No scenario returned");
+      }
+
+      console.log(scenarioData.scenario);
+
+      const messageResponse = await fetch("/api/postMessage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          utterance,
+          numInterpretations,
+          alternatives: alternativeData.alternatives,
+          scenario: scenarioData.scenario,
+        }),
+      });
+      const messageData = await messageResponse.json();
+
+      if (!messageData.message) {
+        throw new Error("No message returned");
+      }
+
+      console.log(messageData.message);
+      setSupermessage(messageData.message);
     } catch (error) {
       console.error("Error posting data:", error);
     }
   };
 
+  //
   const fetchNewInterpretation = async () => {
     setRequestedNewInterpretation(true);
     try {
@@ -110,7 +131,7 @@ function App() {
         const newWeights = [...weights];
         newWeights.push(1);
         setWeights(newWeights);
-        setNumInterpretations(numinterpretations + 1);
+        setNumInterpretations(numInterpretations + 1);
       }
       setRequestedNewInterpretation(false);
     } catch (error) {
@@ -119,6 +140,7 @@ function App() {
     }
   };
 
+  //
   const fetchMessage = async () => {
     try {
       const response = await fetch("/api/getmessage", {
@@ -134,25 +156,27 @@ function App() {
       const data = await response.json();
       if (data.message) {
         setSupermessage(data.message);
-        setHaveCandidates(true);
+        setHaveAlternatives(true);
       }
     } catch (error) {
       console.error("Error posting data:", error);
     }
   };
 
-  const goToStart = () => {
-    setStart(false);
-    setHaveCandidates(false);
+  //
+  const restart = () => {
+    setStarted(false);
+    setHaveAlternatives(false);
     setAlternatives([]);
     setUtterance("");
     setNumInterpretations(1);
     setWeights([]);
   };
 
+  //
   const renderLoadingDivs = () => {
     const divs = [];
-    for (let i = 0; i < numinterpretations + 1; i++) {
+    for (let i = 0; i < numInterpretations + 1; i++) {
       divs.push(
         <div
           key={"sk" + i}
@@ -181,7 +205,7 @@ function App() {
           }}
         >
           <AnimatePresence>
-            {!start ? (
+            {!started ? (
               <motion.h1
                 key="content"
                 style={{
@@ -221,7 +245,7 @@ function App() {
                     display: "flex",
                     cursor: "pointer",
                   }}
-                  onClick={goToStart}
+                  onClick={restart}
                 >
                   <svg
                     height="20"
@@ -246,7 +270,7 @@ function App() {
                         stroke-linejoin="round"
                         transform="translate(6 6)"
                       >
-                        <path d="m.5 7.5v-7h7"></path>{" "}
+                        <path d="m.5 7.5v-7h7"></path>
                         <path d="m.5.5 8 8"></path>
                       </g>
                     </g>
@@ -278,22 +302,12 @@ function App() {
           ></hr>
         </div>
       </div>
-      {!start && (
+      {!started && (
         <div
           style={{
             margin: "auto",
           }}
         >
-          {/* <p
-          style={{
-            fontSize: "1.6rem",
-            fontWeight: "bold",
-            color: "rgb(28, 159, 252)",
-            fontFamily: "freight-text-pro, serif",
-          }}
-        >
-          How it works
-        </p> */}
           <AnimatePresence>
             <motion.img
               style={{ width: "100%" }}
@@ -338,18 +352,6 @@ function App() {
           </AnimatePresence>
         </div>
       )}
-      {/* <p
-        style={{
-          fontSize: "1.6rem",
-          fontWeight: "bold",
-          width: "50%",
-          margin: "auto",
-          color: "rgb(28, 159, 252)",
-          fontFamily: "freight-text-pro, serif",
-        }}
-      >
-        Try it
-      </p> */}
       <motion.div
         style={{
           margin: "auto",
@@ -407,7 +409,7 @@ function App() {
                 <NumericInput
                   min={1}
                   max={10}
-                  value={numinterpretations}
+                  value={numInterpretations}
                   style={{
                     input: {
                       fontSize: "1.2rem",
@@ -422,11 +424,11 @@ function App() {
                       borderRadius: "4px",
                     },
                   }}
-                  onChange={ChangeNums}
+                  onChange={setNumInterpretations}
                 />
               </div>
               <div>
-                {start == false ? (
+                {started === false ? (
                   utterance.trim() === "" ? (
                     <Button
                       size="large"
@@ -484,7 +486,7 @@ function App() {
                     }}
                     onClick={() => {
                       handleSubmit();
-                      setHaveCandidates(false);
+                      setHaveAlternatives(false);
                     }}
                   >
                     Restart
@@ -495,11 +497,11 @@ function App() {
           </div>
         </div>
       </motion.div>
-      {start && (
+      {started && (
         <div style={{ display: "flex", marginTop: "2rem" }}>
           <div style={{ flex: 3, display: "flex" }}>
             <div style={{ flex: 1 }}>
-              {haveCandidates &&
+              {hasAlternatives &&
                 weights.length > 0 &&
                 weights.map((weight, index) => (
                   <div
@@ -524,7 +526,7 @@ function App() {
                           const newAlternatives = [...alternatives];
                           newAlternatives.splice(index, 1);
                           setAlternatives(newAlternatives);
-                          setNumInterpretations(numinterpretations - 1);
+                          setNumInterpretations(numInterpretations - 1);
                         }}
                       ></Button>
                     )}
@@ -532,8 +534,8 @@ function App() {
                 ))}
             </div>
             <div style={{ flex: 7 }}>
-              {!haveCandidates && renderLoadingDivs()}
-              {haveCandidates &&
+              {!hasAlternatives && renderLoadingDivs()}
+              {hasAlternatives &&
                 alternatives.length > 0 &&
                 alternatives.map((alternative, index) => (
                   <div
@@ -580,9 +582,9 @@ function App() {
                   <SkeletonItem />
                 </div>
               )}
-              {haveCandidates && (
+              {hasAlternatives && (
                 <div style={{ marginRight: "20px" }}>
-                  {requestedNewInterpretation == false ? (
+                  {requestedNewInterpretation === false ? (
                     <Button
                       icon={<CalendarMonthRegular />}
                       style={{
@@ -616,7 +618,7 @@ function App() {
               )}
             </div>
             <div style={{ flex: 2 }}>
-              {haveCandidates &&
+              {hasAlternatives &&
                 weights.length > 0 &&
                 weights.map((weight, index) => (
                   <div
@@ -650,7 +652,7 @@ function App() {
             </div>
           </div>
           <div style={{ flex: 2 }}>
-            {!haveCandidates && (
+            {!hasAlternatives && (
               <div
                 style={{
                   display: "flex",
@@ -663,7 +665,7 @@ function App() {
                 <SkeletonItem />
               </div>
             )}
-            {haveCandidates && (
+            {hasAlternatives && (
               <div>
                 <div
                   style={{
@@ -701,7 +703,7 @@ function App() {
                     }}
                     onClick={() => {
                       fetchMessage();
-                      setHaveCandidates(false);
+                      setHaveAlternatives(false);
                     }}
                   >
                     Regenerate

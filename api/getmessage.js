@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
       ']\n\nHarry is a character in a scene. Generate a single scene in which Harry might plausibly say any one of the alternatives above to a single character with equal justification. Your response should only include a json object with one attribute, "scene", whose value is a string that describes the scene. The scene description should end in "At this moment, Harry may say any one of the following:"';
     console.log(scenariogettingprompt);
     const scenarioresponse = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo",
       messages: [
         {
           role: "user",
@@ -33,6 +33,7 @@ module.exports = async (req, res) => {
       top_p: 1,
       frequency_penalty: 0,
       presence_penalty: 0,
+      // response_format: { type: "json_object" },
     });
 
     console.log(
@@ -51,7 +52,7 @@ module.exports = async (req, res) => {
       "]\n\n\nConsider the person Harry might have to say the first alternative to. Now, generate a message that Harry might say to that person, in this situation. The message should combine ALL the alternatives equally but doesn't explicate any one of the alternatives. Do not use any names of people. Your response should only include the message. It should begin and end with the \" character.";
 
     const messageresponse = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo",
       messages: [
         {
           role: "user",
