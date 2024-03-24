@@ -235,7 +235,7 @@ function App() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                Say It, Without Saying It
+                Send Mixed Signals
               </motion.h1>
             ) : (
               <motion.div

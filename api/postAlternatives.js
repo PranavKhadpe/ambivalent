@@ -30,7 +30,7 @@ If the number of requested intents is 3 or more, then the alternate intent, Inte
 Make sure that the length of the array in the response is equal to the number of requested intents`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4",
       messages: [
         {
           role: "user",

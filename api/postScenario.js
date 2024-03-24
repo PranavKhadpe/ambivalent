@@ -20,7 +20,7 @@ Harry is a character in a scene. Generate a single scene in which Harry might pl
     console.log(prompt);
 
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4",
       messages: [
         {
           role: "user",
@@ -32,7 +32,7 @@ Harry is a character in a scene. Generate a single scene in which Harry might pl
       top_p: 1,
       frequency_penalty: 0,
       presence_penalty: 0,
-      response_format: { type: "json_object" },
+      // response_format: { type: "json_object" },
     });
 
     console.log(
