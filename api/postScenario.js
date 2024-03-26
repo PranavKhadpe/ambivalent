@@ -10,41 +10,45 @@ module.exports = async (req, res) => {
 
     const { alternatives } = req.body;
 
+    const systemPrompt =
+      "You are a smart writing assistant helping me write a 3-5 line scene in which Harry, a character, might say one of several alternatives.";
     const prompt = `
-Alternatives: [
-"${alternatives.join('",\n"')}"
-]
+Harry is a character in a short scene. Generate a single scene in which Harry might plausibly say any one of the alternatives above to a single other character with equal justification.
 
-Harry is a character in a scene. Generate a single scene in which Harry might plausibly say any one of the alternatives above to a single character with equal justification. Your response should only include a JSON object with one attribute, "scene", whose value is a string that describes the scene. The scene description should end in "At this moment, Harry may say any one of the following:"
+## Alternatives
+"${alternatives.join('"\n"')}"
+
+## Response Format
+Your response should be a JSON object with the key "scene", whose value is a 3-5 line scene string. The scene description should end in "At this moment, Harry may say any one of the following:"
 `;
-    console.log(prompt);
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4-turbo-preview",
       messages: [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
         {
           role: "user",
           content: prompt,
         },
       ],
-      temperature: 1.04,
-      max_tokens: 256,
+      temperature: 1.5,
+      max_tokens: 1024,
       top_p: 1,
       frequency_penalty: 0,
       presence_penalty: 0,
-      // response_format: { type: "json_object" },
+      response_format: { type: "json_object" },
     });
 
-    console.log(
-      "[postScenario] LLM Response",
-      JSON.parse(response.choices[0].message.content)
-    );
+    const { scene } = JSON.parse(response.choices[0].message.content);
 
-    const scenario = JSON.parse(response.choices[0].message.content);
+    console.log("[postScenario] Response", scene);
 
     // Respond to the request
     res.status(200).json({
-      scenario: scenario.scene,
+      scenario: scene,
     });
   } else {
     // Handle other request methods if necessary, or return an error

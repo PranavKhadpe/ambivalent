@@ -20,8 +20,6 @@ function App() {
   const [numAlternatives, setNumAlternatives] = useState(1);
   const [alternatives, setAlternatives] = useState([]);
   const [weights, setWeights] = useState([]);
-  const [requestedNewInterpretation, setRequestedNewInterpretation] =
-    useState(false);
   const [supermessage, setSupermessage] = useState("");
 
   const [loadingAlternatives, setLoadingAlternatives] = useState(true);
@@ -95,7 +93,6 @@ function App() {
   };
 
   const doNewAlternative = async () => {
-    setRequestedNewInterpretation(true);
     setLoadingNewAlternative(true);
 
     try {
@@ -116,19 +113,12 @@ function App() {
         throw new Error("No new alternative returned");
       }
 
-      // remove quotes
-      const newAlternativeSanitized = newAlternative.substring(
-        1,
-        newAlternative.length - 1
-      );
-
-      setAlternatives([...alternatives, newAlternativeSanitized]);
+      setAlternatives([...alternatives, newAlternative]);
       setWeights([...weights, 1]);
       setNumAlternatives(numAlternatives + 1);
     } catch (error) {
       console.error("Error posting data:", error);
     } finally {
-      setRequestedNewInterpretation(false);
       setLoadingNewAlternative(false);
     }
   };
@@ -180,7 +170,6 @@ function App() {
     setNumAlternatives(1);
     setAlternatives([]);
     setWeights([]);
-    setRequestedNewInterpretation(false);
     setSupermessage("");
     setLoadingAlternatives(true);
     setLoadingNewAlternative(false);
@@ -676,6 +665,7 @@ function App() {
                       border: "1px solid #d1d1d1",
                       borderRadius: "4px",
                       marginLeft: "20px",
+                      marginBottom: "10px",
                     }}
                     value={supermessage}
                     onChange={(e) => setSupermessage(e.target.value)}

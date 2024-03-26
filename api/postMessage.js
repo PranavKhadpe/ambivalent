@@ -11,17 +11,27 @@ module.exports = async (req, res) => {
 
     const { scenario, alternatives } = req.body;
 
+    const systemPrompt =
+      "You are a smart writing assistant. I will give you a scene with a list of possible ways a character might respond. Your job is to generate a message that represents the intents of all the alternatives.";
     const prompt = `
-Scene: ${scenario}    
+## Scene
+${scenario}
+"${alternatives.join('",\n"')}"
 
-Alternatives: ["${alternatives.join('",\n"')}"]
+## Generation Procedure
+Consider the person Harry is speaking to. Generate a short message that Harry might say to the person in this situation. The message should combine the intents of ALL the alternatives equally and shouldn't explicate any one of the alternatives. Use pronouns instead of names of people.
 
-Consider the person Harry might have to say the first alternative to. Now, generate a message that Harry might say to that person, in this situation. The message should combine ALL the alternatives equally but doesn't explicate any one of the alternatives. Do not use any names of people. Your response should only include the message. It should begin and end with the " character.
+## Response Format
+Your response should be a JSON object with the key "response", whose value is Harry's response combining the intents of all the alternatives.
 `;
 
     const messageresponse = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4-turbo-preview",
       messages: [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
         {
           role: "user",
           content: prompt,
@@ -32,17 +42,16 @@ Consider the person Harry might have to say the first alternative to. Now, gener
       top_p: 1,
       frequency_penalty: 0,
       presence_penalty: 0,
-      // response_format: { type: "json_object" },
+      response_format: { type: "json_object" },
     });
 
-    console.log(
-      "[postMessage] LLM Response",
-      messageresponse.choices[0].message.content
-    );
+    const { response } = JSON.parse(messageresponse.choices[0].message.content);
+
+    console.log("[postMessage] Response", response);
 
     // Respond to the request
     res.status(200).json({
-      message: messageresponse.choices[0].message.content,
+      message: response,
     });
   } else {
     // Handle other request methods if necessary, or return an error
