@@ -6,54 +6,54 @@ const openai = new OpenAI({
 
 module.exports = async (req, res) => {
   if (req.method === "POST") {
-    // Log the received data
     console.log("[postNewAlternative] Request", req.body);
 
     const { alternatives } = req.body;
 
-    let prompt = `I have an intent that I want to convey but I want to obscure it in my message by also including other intents. Each intent is unique. I want you to generate exactly 1 additional intent.
+    const systemPrompt =
+      "You are a smart writing assistant. I will give you a list of intents that I want to convey in a message I am writing. I want you to write one alternate messages that conveys a different and unrelated version of the intent.";
+    const prompt = `\
+I have an intent that I want to convey but I want to obscure it in my message by also including other intents. Each intent is unique. I want you to generate exactly 1 additional intent.
 
 ## Original Intent
-My original intent is the following: "${alternatives[0]}". 
+${alternatives[0]}
 
 ## Alternate Intents
-I have already decided to include the following intents alongside my Original Intent:`;
+"${alternatives.join('"\n"')}"
 
-    for (let i = 1; i < alternatives.length; i++) {
-      prompt += `\n${i}. "${alternatives[i]}"`;
-    }
-
-    prompt += `
 ## Generation Procedure
-Generate exactly one additional intent that would complement the Original Intent and Alternate Intents by violating expectations
+Generate exactly one additional intent that would complement the original intent and alternate intents by violating expectations.
 
 ## Response Format
-Return only the generated intent. The response should begin with a " character and end with a " character.`;
-    console.log(prompt);
+Return a JSON object with the key "alternative" whose value is a string representing the new intent.\
+`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4-turbo-preview",
       messages: [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
         {
           role: "user",
           content: prompt,
         },
       ],
-      temperature: 1.04,
-      max_tokens: 150,
+      temperature: 1.6,
+      max_tokens: 128,
       top_p: 1,
-      frequency_penalty: 0,
-      presence_penalty: 0.6,
+      frequency_penalty: 0.8,
+      presence_penalty: 0.8,
+      response_format: { type: "json_object" },
     });
-    console.log(
-      "[postNewAlternative] LLM Response",
-      response.choices[0].message.content
-    );
+
+    const { alternative } = JSON.parse(response.choices[0].message.content);
+
+    console.log("[postNewAlternative] Response", alternative);
 
     // Respond to the request
-    res
-      .status(200)
-      .json({ newAlternative: response.choices[0].message.content });
+    res.status(200).json({ newAlternative: alternative });
   } else {
     // Handle other request methods if necessary, or return an error
     res.status(405).json({ error: "Method not allowed" });
