@@ -29,11 +29,11 @@ ${weightsNormalized.join("\n")}
 ${message}
 
 ## Generation Procedure
-Repeat this procedure 3 times:
 1. Take the current version of the message and list of intents. For each intent, determine the extent to which the message emphasizes the intent. Let's call this weight of the intent. Your output should be an array called current_weights that contains the weight of each intent in the message. The weights should sum to 1.
 2. Compare the current_weights array to the desired weights array. For indices where the current_weight is less than the desired weight, the intent needs to be emphasized, and where current_weight is higher than desired_weight, the intent needs to be de-emphasized.
-3. With this in mind, rewrite the message to shift the emphasis.
-4. After the procedure is over or if the current_weights match the desired weight, output the final output in the following JSON format: {finalMessage: "...", finalWeights: current_weights}.
+3. If the current_weights array is already equal to the desired weights array, the message has converged. Output the JSON object {finalMessage: string (old message), converged: true}.
+4. If not, rewrite the message to shift the emphasis.
+4. Output the final output in the following JSON format: {finalMessage: "...", converged: false }.
 `;
 
     const response = await openai.chat.completions.create({
@@ -53,12 +53,12 @@ Repeat this procedure 3 times:
       top_p: 1,
       frequency_penalty: 0,
       presence_penalty: 0,
-      // response_format: { type: "json_object" },
+      response_format: { type: "json_object" },
     });
 
-    const responseMessage = response.choices[0].message.content;
-    const lastOpenBracket = responseMessage.lastIndexOf("{");
-    const lastCloseBracket = responseMessage.lastIndexOf("}");
+    // const responseMessage = response.choices[0].message.content;
+    // const lastOpenBracket = responseMessage.lastIndexOf("{");
+    // const lastCloseBracket = responseMessage.lastIndexOf("}");
 
     // console.log("[postWeights] LLM", responseMessage);
     // console.log(
@@ -66,16 +66,20 @@ Repeat this procedure 3 times:
     //   responseMessage.substring(lastOpenBracket, lastCloseBracket + 1)
     // );
 
-    const { finalMessage, finalWeights } = JSON.parse(
-      responseMessage.substring(lastOpenBracket, lastCloseBracket + 1)
+    // const { finalMessage, finalWeights } = JSON.parse(
+    //   responseMessage.substring(lastOpenBracket, lastCloseBracket + 1)
+    // );
+
+    const { finalMessage, converged } = JSON.parse(
+      response.choices[0].message.content
     );
 
-    console.log("[postWeights] Response", finalMessage);
+    console.log("[postWeights] Response", response.choices[0].message.content);
 
     // Respond to the request
     res.status(200).json({
       message: finalMessage,
-      weights: finalWeights,
+      converged,
     });
   } else {
     // Handle other request methods if necessary, or return an error

@@ -22,9 +22,10 @@ function App() {
   const [weights, setWeights] = useState([]);
   const [scene, setScene] = useState("");
   const [superMessage, setSuperMessage] = useState("");
-  // this is a "cache" of the alternatives used to generate the superMessage
-  // if the weights have changed but superAlternatives have not, we do not postScenario or postMessage
+  // this is a "cache" of the alternatives and weights used to generate the superMessage
+  // if the weights have changed but superAlternatives have not, we do not postScenario or postMessage and only postWeights
   const [superAlternatives, setSuperAlternatives] = useState([]);
+  const [superWeights, setSuperWeights] = useState([]);
 
   const [loadingAlternatives, setLoadingAlternatives] = useState(true);
   const [loadingNewAlternative, setLoadingNewAlternative] = useState(false);
@@ -33,27 +34,44 @@ function App() {
   const doWeights = async () => {
     setLoadingMessage(true);
     try {
-      const weightsResponse = await fetch("/api/postWeights", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          alternatives,
-          weights,
-          message: superMessage,
-          scene,
-        }),
-      });
-      const { message } = await weightsResponse.json();
-      if (!message) {
-        throw new Error("No message returned");
+      let iter = 0;
+      let currentMessage = superMessage;
+
+      while (iter < 3) {
+        const weightsResponse = await fetch("/api/postWeights", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            alternatives,
+            weights,
+            message: currentMessage,
+            scene,
+          }),
+        });
+        const { message, converged } = await weightsResponse.json();
+
+        if (!message) {
+          throw new Error("No message returned");
+        }
+
+        currentMessage = message;
+
+        if (converged) {
+          break;
+        }
+
+        iter++;
       }
-      setSuperMessage(message);
+
+      setSuperMessage(currentMessage);
       setSuperAlternatives(alternatives);
-      setLoadingMessage(false);
+      setSuperWeights(weights);
     } catch (error) {
       console.error("Error posting data:", error);
+    } finally {
+      setLoadingMessage(false);
     }
   };
 
@@ -119,6 +137,8 @@ function App() {
         throw new Error("No message returned");
       }
       setSuperMessage(message);
+      setSuperAlternatives(alternatives);
+      setSuperWeights(newWeights);
       setLoadingMessage(false);
     } catch (error) {
       console.error("Error posting data:", error);
@@ -161,11 +181,15 @@ function App() {
 
     try {
       if (
+        // every alternative is the same
         superAlternatives.length === alternatives.length &&
         alternatives.every(
           (alternative, index) => alternative === superAlternatives[index]
-        )
+        ) &&
+        // but the weights have changed
+        !weights.every((weight, index) => weight === superWeights[index])
       ) {
+        // only do postWeights
         await doWeights();
         return;
       }
@@ -204,6 +228,7 @@ function App() {
       if (weights.every((weight, index) => weight === weights[0])) {
         setSuperMessage(message);
         setSuperAlternatives(alternatives);
+        setSuperWeights(weights);
         return;
       }
 
