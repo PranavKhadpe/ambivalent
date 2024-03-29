@@ -20,11 +20,42 @@ function App() {
   const [numAlternatives, setNumAlternatives] = useState(1);
   const [alternatives, setAlternatives] = useState([]);
   const [weights, setWeights] = useState([]);
-  const [supermessage, setSupermessage] = useState("");
+  const [scene, setScene] = useState("");
+  const [superMessage, setSuperMessage] = useState("");
+  // this is a "cache" of the alternatives used to generate the superMessage
+  // if the weights have changed but superAlternatives have not, we do not postScenario or postMessage
+  const [superAlternatives, setSuperAlternatives] = useState([]);
 
   const [loadingAlternatives, setLoadingAlternatives] = useState(true);
   const [loadingNewAlternative, setLoadingNewAlternative] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(true);
+
+  const doWeights = async () => {
+    setLoadingMessage(true);
+    try {
+      const weightsResponse = await fetch("/api/postWeights", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          alternatives,
+          weights,
+          message: superMessage,
+          scene,
+        }),
+      });
+      const { message } = await weightsResponse.json();
+      if (!message) {
+        throw new Error("No message returned");
+      }
+      setSuperMessage(message);
+      setSuperAlternatives(alternatives);
+      setLoadingMessage(false);
+    } catch (error) {
+      console.error("Error posting data:", error);
+    }
+  };
 
   const doCompleteFlow = async () => {
     setStarted(true);
@@ -70,6 +101,8 @@ function App() {
         throw new Error("No scenario returned");
       }
 
+      setScene(scenario);
+
       const messageResponse = await fetch("/api/postMessage", {
         method: "POST",
         headers: {
@@ -85,7 +118,7 @@ function App() {
       if (!message) {
         throw new Error("No message returned");
       }
-      setSupermessage(message);
+      setSuperMessage(message);
       setLoadingMessage(false);
     } catch (error) {
       console.error("Error posting data:", error);
@@ -127,6 +160,16 @@ function App() {
     setLoadingMessage(true);
 
     try {
+      if (
+        superAlternatives.length === alternatives.length &&
+        alternatives.every(
+          (alternative, index) => alternative === superAlternatives[index]
+        )
+      ) {
+        await doWeights();
+        return;
+      }
+
       const scenarioResponse = await fetch("/api/postScenario", {
         method: "POST",
         headers: {
@@ -156,7 +199,15 @@ function App() {
       if (!message) {
         throw new Error("No message returned");
       }
-      setSupermessage(message);
+
+      // if weights are the same, we can just return the message
+      if (weights.every((weight, index) => weight === weights[0])) {
+        setSuperMessage(message);
+        setSuperAlternatives(alternatives);
+        return;
+      }
+
+      await doWeights();
     } catch (error) {
       console.error("Error posting data:", error);
     } finally {
@@ -170,7 +221,7 @@ function App() {
     setNumAlternatives(1);
     setAlternatives([]);
     setWeights([]);
-    setSupermessage("");
+    setSuperMessage("");
     setLoadingAlternatives(true);
     setLoadingNewAlternative(false);
     setLoadingMessage(true);
@@ -584,7 +635,7 @@ function App() {
                       fontFamily: "freight-text-pro, serif",
                     }}
                     onClick={doNewAlternative}
-                    disabled={loadingNewAlternative}
+                    disabled={loadingNewAlternative || loadingMessage}
                   >
                     Add another interpretation
                   </Button>
@@ -600,9 +651,9 @@ function App() {
                     style={{ height: "70px", marginBottom: "10px" }}
                   >
                     <NumericInput
-                      min={-100}
-                      max={100}
-                      step={5}
+                      min={0}
+                      max={10}
+                      step={1}
                       value={weight}
                       style={{
                         input: {
@@ -667,8 +718,8 @@ function App() {
                       marginLeft: "20px",
                       marginBottom: "10px",
                     }}
-                    value={supermessage}
-                    onChange={(e) => setSupermessage(e.target.value)}
+                    value={superMessage}
+                    onChange={(e) => setSuperMessage(e.target.value)}
                   />
                 </div>
                 <div style={{ marginLeft: "20px" }}>

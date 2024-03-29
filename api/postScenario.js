@@ -11,7 +11,7 @@ module.exports = async (req, res) => {
     const { alternatives } = req.body;
 
     const systemPrompt =
-      "You are a smart writing assistant helping me write a 3-5 line scene in which Harry, a character, might say one of several alternatives.";
+      "You are a smart writing assistant helping me write a short 3-5 line scene in which Harry, a character, might say one of several alternatives.";
     const prompt = `
 Harry is a character in a short scene. Generate a single scene in which Harry might plausibly say any one of the alternatives above to a single other character with equal justification.
 
@@ -35,7 +35,7 @@ Your response should be a JSON object with the key "scene", whose value is a 3-5
         },
       ],
       temperature: 1.5,
-      max_tokens: 1024,
+      max_tokens: 2048,
       top_p: 1,
       frequency_penalty: 0,
       presence_penalty: 0,
