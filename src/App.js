@@ -4,17 +4,19 @@ import {
   ArrowSyncCircleRegular,
   CalendarMonthRegular,
   DeleteRegular,
+  BookInformationRegular,
 } from "@fluentui/react-icons";
 import header from "./ambivalent.png";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import NumericInput from "react-numeric-input";
 import TextareaAutosize from "react-textarea-autosize";
 import "./App.css";
 
 function App() {
   const [started, setStarted] = useState(false);
+  const [remainingWillPower, setRemainingWillPower] = useState(10);
 
   const [utterance, setUtterance] = useState("");
   const [numAlternatives, setNumAlternatives] = useState(1);
@@ -198,6 +200,12 @@ function App() {
     return divs;
   };
 
+  useEffect(() => {
+    if (started) {
+      setRemainingWillPower(10 - weights.reduce((a, b) => a + b, 0));
+    }
+  }, [weights]);
+
   return (
     <div className="App">
       <div style={{ position: "relative" }}>
@@ -218,6 +226,8 @@ function App() {
                   fontFamily: "freight-text-pro, serif",
                   fontSize: "2rem",
                   margin: "0",
+                  display: "flex",
+                  justifyContent: "space-between",
                 }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }} // Make relative after animation
@@ -225,6 +235,29 @@ function App() {
                 transition={{ duration: 0.5 }}
               >
                 Send Mixed Signals
+                <a
+                  href="https://pranavkhadpe.github.io/assets/publication/SIGBOVIK24_SMS.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button
+                    size="large"
+                    icon={<BookInformationRegular />}
+                    style={{
+                      height: "43px",
+                      // fontSize: "1.2rem",
+                      // fontWeight: "400",
+                      // fontFamily: "freight-text-pro, serif",
+                      fontSize: "1rem",
+                      fontWeight: "400",
+                      fontFamily: "freight-micro-pro, serif",
+                      fontStyle: "normal",
+                    }}
+                    // appearance="outline"
+                  >
+                    Read the Paper
+                  </Button>
+                </a>
               </motion.h1>
             ) : (
               <motion.div
@@ -336,19 +369,21 @@ function App() {
             >
               <div style={{ display: "flex", width: "100%" }}>
                 <div style={{ flex: 0.6, padding: "20px" }}>
-                  Tell the system what you (don’t) want to say.
+                  Begin with one intent you recognize you have but are reluctant
+                  to express by itself.
                 </div>
                 <div style={{ flex: 1, padding: "20px" }}>
-                  The system rewrites your utterance, creating the possibility
-                  for alternate interpretations of it.
+                  The system helps you iteratively compose a message that blends
+                  that intent with other co-existing intents you have.
                 </div>
                 <div style={{ flex: 1, padding: "20px" }}>
-                  You can control the number of alternate interpretations you
-                  want to admit, and even what these interpretations should be.
+                  You can direct the composition process by iteratively editing
+                  the number of co-existing intents, what these intents are, and
+                  the emphasis on each intent.
                 </div>
                 <div style={{ flex: 1, padding: "20px" }}>
-                  You can send the modified utterance with room for alternate
-                  interpretations, to the intended recipient.
+                  You can then share the message with mixed intents (the mixed
+                  signal).
                 </div>
               </div>
             </motion.div>
@@ -386,7 +421,7 @@ function App() {
                   marginLeft: "20px",
                 }}
                 minRows={2}
-                placeholder="What do you (not) want to say?"
+                placeholder="What do you want to say (but are hesitant to say by itself)?"
                 value={utterance}
                 onChange={(e) => setUtterance(e.target.value)}
               />
@@ -406,8 +441,16 @@ function App() {
               }}
             >
               <div>
-                <span style={{ padding: "20px" }}>
-                  Number of alternate interpretations:
+                <span
+                  style={{
+                    padding: "20px",
+                    fontSize: "1rem",
+                    fontWeight: "400",
+                    fontFamily: "freight-micro-pro, serif",
+                    fontStyle: "normal",
+                  }}
+                >
+                  Number of alternate intents:
                 </span>
                 <NumericInput
                   min={1}
@@ -438,9 +481,13 @@ function App() {
                       icon={<AppsAddInRegular />}
                       style={{
                         height: "43px",
-                        fontSize: "1.2rem",
+                        // fontSize: "1.2rem",
+                        // fontWeight: "400",
+                        // fontFamily: "freight-text-pro, serif",
+                        fontSize: "1rem",
                         fontWeight: "400",
-                        fontFamily: "freight-text-pro, serif",
+                        fontFamily: "freight-micro-pro, serif",
+                        fontStyle: "normal",
                       }}
                       disabled
                     >
@@ -452,9 +499,13 @@ function App() {
                       icon={<AppsAddInRegular />}
                       style={{
                         height: "43px",
-                        fontSize: "1.2rem",
+                        // fontSize: "1.2rem",
+                        // fontWeight: "400",
+                        // fontFamily: "freight-text-pro, serif",
+                        fontSize: "1rem",
                         fontWeight: "400",
-                        fontFamily: "freight-text-pro, serif",
+                        fontFamily: "freight-micro-pro, serif",
+                        fontStyle: "normal",
                       }}
                       onClick={doCompleteFlow}
                     >
@@ -467,9 +518,13 @@ function App() {
                     icon={<AppsAddInRegular />}
                     style={{
                       height: "43px",
-                      fontSize: "1.2rem",
+                      // fontSize: "1.2rem",
+                      // fontWeight: "400",
+                      // fontFamily: "freight-text-pro, serif",
+                      fontSize: "1rem",
                       fontWeight: "400",
-                      fontFamily: "freight-text-pro, serif",
+                      fontFamily: "freight-micro-pro, serif",
+                      fontStyle: "normal",
                     }}
                     disabled
                   >
@@ -481,9 +536,13 @@ function App() {
                     icon={<AppsAddInRegular />}
                     style={{
                       height: "43px",
-                      fontSize: "1.2rem",
+                      // fontSize: "1.2rem",
+                      // fontWeight: "400",
+                      // fontFamily: "freight-text-pro, serif",
+                      fontSize: "1rem",
                       fontWeight: "400",
-                      fontFamily: "freight-text-pro, serif",
+                      fontFamily: "freight-micro-pro, serif",
+                      fontStyle: "normal",
                     }}
                     onClick={doCompleteFlow}
                   >
@@ -496,6 +555,55 @@ function App() {
         </div>
       </motion.div>
       {started && (
+        <div
+          style={{
+            display: "flex",
+            marginTop: "2rem",
+          }}
+        >
+          <div style={{ flex: 3, display: "flex" }}>
+            <div style={{ flex: 1 }}></div>
+            <div
+              style={{
+                flex: 7,
+                fontSize: "1rem",
+                fontWeight: "400",
+                fontFamily: "freight-micro-pro, serif",
+                fontStyle: "normal",
+              }}
+            >
+              Intents
+            </div>
+            <div
+              style={{
+                flex: 2,
+                fontSize: "1rem",
+                fontWeight: "400",
+                fontFamily: "freight-micro-pro, serif",
+                fontStyle: "normal",
+              }}
+            >
+              Will Power
+            </div>
+          </div>
+          <div style={{ flex: 2 }}>
+            <p
+              style={{
+                margin: "0",
+                paddingLeft: "20px",
+                fontSize: "1rem",
+                fontWeight: "400",
+                fontFamily: "freight-micro-pro, serif",
+                fontStyle: "normal",
+              }}
+            >
+              Message Output
+            </p>
+          </div>
+        </div>
+      )}
+      {started && (
+        // <div style={{ display: "flex", marginTop: "2rem" }}>
         <div style={{ display: "flex", marginTop: "2rem" }}>
           <div style={{ flex: 3, display: "flex" }}>
             {/* Deletes */}
@@ -579,14 +687,18 @@ function App() {
                     style={{
                       width: "100%",
                       height: "43px",
-                      fontSize: "1.2rem",
+                      // fontSize: "1.2rem",
+                      // fontWeight: "400",
+                      // fontFamily: "freight-text-pro, serif",
+                      fontSize: "1rem",
                       fontWeight: "400",
-                      fontFamily: "freight-text-pro, serif",
+                      fontFamily: "freight-micro-pro, serif",
+                      fontStyle: "normal",
                     }}
                     onClick={doNewAlternative}
                     disabled={loadingNewAlternative}
                   >
-                    Add another interpretation
+                    Add Another Intent
                   </Button>
                 </div>
               )}
@@ -600,9 +712,9 @@ function App() {
                     style={{ height: "70px", marginBottom: "10px" }}
                   >
                     <NumericInput
-                      min={-100}
-                      max={100}
-                      step={5}
+                      min={0}
+                      max={10}
+                      step={1}
                       value={weight}
                       style={{
                         input: {
@@ -628,6 +740,32 @@ function App() {
                     />
                   </div>
                 ))}
+              {!loadingAlternatives && (
+                <div style={{}}>
+                  <p
+                    style={{
+                      fontSize: "1rem",
+                      fontWeight: "400",
+                      fontFamily: "freight-micro-pro, serif",
+                      fontStyle: "normal",
+                      marginTop: "10px",
+                    }}
+                  >
+                    You have{" "}
+                    {remainingWillPower >= 0 ? (
+                      <span style={{ color: "rgb(28, 159, 252)" }}>
+                        {remainingWillPower}
+                      </span>
+                    ) : (
+                      <span style={{ color: "rgb(252, 15, 104)" }}>
+                        {remainingWillPower}
+                      </span>
+                    )}{" "}
+                    power points (PPs) left. <br />
+                    Distribute up to 10 PPs in total across the intents.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
           {/* Message */}
@@ -672,19 +810,57 @@ function App() {
                   />
                 </div>
                 <div style={{ marginLeft: "20px" }}>
-                  <Button
-                    icon={<ArrowSyncCircleRegular />}
-                    style={{
-                      width: "100%",
-                      height: "43px",
-                      fontSize: "1.2rem",
-                      fontWeight: "400",
-                      fontFamily: "freight-text-pro, serif",
-                    }}
-                    onClick={doNewMessage}
-                  >
-                    Regenerate
-                  </Button>
+                  {remainingWillPower < 0 ? (
+                    <Button
+                      icon={<ArrowSyncCircleRegular />}
+                      style={{
+                        width: "100%",
+                        height: "43px",
+                        // fontSize: "1.2rem",
+                        // fontWeight: "400",
+                        // fontFamily: "freight-text-pro, serif",
+                        fontSize: "1rem",
+                        fontWeight: "400",
+                        fontFamily: "freight-micro-pro, serif",
+                        fontStyle: "normal",
+                      }}
+                      onClick={doNewMessage}
+                      disabled
+                    >
+                      Regenerate
+                    </Button>
+                  ) : (
+                    <Button
+                      icon={<ArrowSyncCircleRegular />}
+                      style={{
+                        width: "100%",
+                        height: "43px",
+                        // fontSize: "1.2rem",
+                        // fontWeight: "400",
+                        // fontFamily: "freight-text-pro, serif",
+                        fontSize: "1rem",
+                        fontWeight: "400",
+                        fontFamily: "freight-micro-pro, serif",
+                        fontStyle: "normal",
+                      }}
+                      onClick={doNewMessage}
+                    >
+                      Regenerate
+                    </Button>
+                  )}
+                  {remainingWillPower < 0 && (
+                    <p
+                      style={{
+                        fontSize: "1rem",
+                        fontWeight: "400",
+                        fontFamily: "freight-micro-pro, serif",
+                        fontStyle: "normal",
+                      }}
+                    >
+                      Total PPs distributed across Intents can't be more than
+                      10.
+                    </p>
+                  )}
                 </div>
               </div>
             )}

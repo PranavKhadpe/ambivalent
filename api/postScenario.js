@@ -21,6 +21,7 @@ Harry is a character in a short scene. Generate a single scene in which Harry mi
 ## Response Format
 Your response should be a JSON object with the key "scene", whose value is a 3-5 line scene string. The scene description should end in "At this moment, Harry may say any one of the following:"
 `;
+    console.log(prompt);
 
     const response = await openai.chat.completions.create({
       model: "gpt-4-turbo-preview",

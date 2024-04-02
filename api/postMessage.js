@@ -25,6 +25,8 @@ Consider the person Harry is speaking to. Generate a short message that Harry mi
 Your response should be a JSON object with the key "response", whose value is Harry's response combining the intents of all the alternatives.
 `;
 
+    console.log(prompt);
+
     const messageresponse = await openai.chat.completions.create({
       model: "gpt-4-turbo-preview",
       messages: [
