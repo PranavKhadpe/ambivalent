@@ -63,7 +63,7 @@ Your response should be a JSON object with the key "alternatives", whose value i
 
     // Respond to the request
     res.status(200).json({
-      alternatives: alternatives,
+      returnedalternatives: alternatives,
     });
   } else {
     // Handle other request methods if necessary, or return an error

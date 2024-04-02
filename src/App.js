@@ -23,10 +23,57 @@ function App() {
   const [alternatives, setAlternatives] = useState([]);
   const [weights, setWeights] = useState([]);
   const [supermessage, setSupermessage] = useState("");
+  const [scene, setScene] = useState("");
 
   const [loadingAlternatives, setLoadingAlternatives] = useState(true);
   const [loadingNewAlternative, setLoadingNewAlternative] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(true);
+
+  const doWeights = async (
+    alternativespassed,
+    weightspassed,
+    messagepassed,
+    scenariopassed
+  ) => {
+    setLoadingMessage(true);
+    try {
+      let iter = 0;
+      let currentMessage = messagepassed;
+
+      while (iter < 3) {
+        const weightsResponse = await fetch("/api/postWeights", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            alternatives: alternativespassed,
+            weights: weightspassed,
+            message: currentMessage,
+            scene: scenariopassed,
+          }),
+        });
+        const { message, converged } = await weightsResponse.json();
+
+        if (!message) {
+          throw new Error("No message returned");
+        }
+
+        currentMessage = message;
+        setSupermessage(currentMessage);
+
+        if (converged) {
+          break;
+        }
+
+        iter++;
+      }
+    } catch (error) {
+      console.error("Error posting data:", error);
+    } finally {
+      setLoadingMessage(false);
+    }
+  };
 
   const doCompleteFlow = async () => {
     setStarted(true);
@@ -45,8 +92,8 @@ function App() {
           numInterpretations: numAlternatives,
         }),
       });
-      const { alternatives } = await alternativesResponse.json();
-      if (!alternatives) {
+      const { returnedalternatives } = await alternativesResponse.json();
+      if (!returnedalternatives) {
         throw new Error("No alternatives returned");
       }
 
@@ -54,7 +101,7 @@ function App() {
       for (let i = 0; i < numAlternatives + 1; i++) {
         newWeights.push(1);
       }
-      setAlternatives(alternatives);
+      setAlternatives(returnedalternatives);
       setWeights(newWeights);
       setLoadingAlternatives(false);
 
@@ -64,7 +111,7 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          alternatives,
+          alternatives: returnedalternatives,
         }),
       });
       const { scenario } = await scenarioResponse.json();
@@ -72,13 +119,15 @@ function App() {
         throw new Error("No scenario returned");
       }
 
+      setScene(scenario);
+
       const messageResponse = await fetch("/api/postMessage", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          alternatives,
+          alternatives: returnedalternatives,
           scenario,
         }),
       });
@@ -88,6 +137,7 @@ function App() {
         throw new Error("No message returned");
       }
       setSupermessage(message);
+      await doWeights(returnedalternatives, newWeights, message, scenario);
       setLoadingMessage(false);
     } catch (error) {
       console.error("Error posting data:", error);
@@ -159,6 +209,7 @@ function App() {
         throw new Error("No message returned");
       }
       setSupermessage(message);
+      await doWeights(alternatives, weights, message, scenario);
     } catch (error) {
       console.error("Error posting data:", error);
     } finally {
