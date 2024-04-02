@@ -22,11 +22,60 @@ function App() {
   const [numAlternatives, setNumAlternatives] = useState(1);
   const [alternatives, setAlternatives] = useState([]);
   const [weights, setWeights] = useState([]);
-  const [supermessage, setSupermessage] = useState("");
+  const [scene, setScene] = useState("");
+  const [superMessage, setSuperMessage] = useState("");
+  // this is a "cache" of the alternatives and weights used to generate the superMessage
+  // if the weights have changed but superAlternatives have not, we do not postScenario or postMessage and only postWeights
+  const [superAlternatives, setSuperAlternatives] = useState([]);
+  const [superWeights, setSuperWeights] = useState([]);
 
   const [loadingAlternatives, setLoadingAlternatives] = useState(true);
   const [loadingNewAlternative, setLoadingNewAlternative] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(true);
+
+  const doWeights = async () => {
+    setLoadingMessage(true);
+    try {
+      let iter = 0;
+      let currentMessage = superMessage;
+
+      while (iter < 3) {
+        const weightsResponse = await fetch("/api/postWeights", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            alternatives,
+            weights,
+            message: currentMessage,
+            scene,
+          }),
+        });
+        const { message, converged } = await weightsResponse.json();
+
+        if (!message) {
+          throw new Error("No message returned");
+        }
+
+        currentMessage = message;
+
+        if (converged) {
+          break;
+        }
+
+        iter++;
+      }
+
+      setSuperMessage(currentMessage);
+      setSuperAlternatives(alternatives);
+      setSuperWeights(weights);
+    } catch (error) {
+      console.error("Error posting data:", error);
+    } finally {
+      setLoadingMessage(false);
+    }
+  };
 
   const doCompleteFlow = async () => {
     setStarted(true);
@@ -72,6 +121,8 @@ function App() {
         throw new Error("No scenario returned");
       }
 
+      setScene(scenario);
+
       const messageResponse = await fetch("/api/postMessage", {
         method: "POST",
         headers: {
@@ -87,7 +138,9 @@ function App() {
       if (!message) {
         throw new Error("No message returned");
       }
-      setSupermessage(message);
+      setSuperMessage(message);
+      setSuperAlternatives(alternatives);
+      setSuperWeights(newWeights);
       setLoadingMessage(false);
     } catch (error) {
       console.error("Error posting data:", error);
@@ -129,6 +182,20 @@ function App() {
     setLoadingMessage(true);
 
     try {
+      if (
+        // every alternative is the same
+        superAlternatives.length === alternatives.length &&
+        alternatives.every(
+          (alternative, index) => alternative === superAlternatives[index]
+        ) &&
+        // but the weights have changed
+        !weights.every((weight, index) => weight === superWeights[index])
+      ) {
+        // only do postWeights
+        await doWeights();
+        return;
+      }
+
       const scenarioResponse = await fetch("/api/postScenario", {
         method: "POST",
         headers: {
@@ -158,7 +225,16 @@ function App() {
       if (!message) {
         throw new Error("No message returned");
       }
-      setSupermessage(message);
+
+      // if weights are the same, we can just return the message
+      if (weights.every((weight, index) => weight === weights[0])) {
+        setSuperMessage(message);
+        setSuperAlternatives(alternatives);
+        setSuperWeights(weights);
+        return;
+      }
+
+      await doWeights();
     } catch (error) {
       console.error("Error posting data:", error);
     } finally {
@@ -172,7 +248,7 @@ function App() {
     setNumAlternatives(1);
     setAlternatives([]);
     setWeights([]);
-    setSupermessage("");
+    setSuperMessage("");
     setLoadingAlternatives(true);
     setLoadingNewAlternative(false);
     setLoadingMessage(true);
@@ -696,7 +772,7 @@ function App() {
                       fontStyle: "normal",
                     }}
                     onClick={doNewAlternative}
-                    disabled={loadingNewAlternative}
+                    disabled={loadingNewAlternative || loadingMessage}
                   >
                     Add Another Intent
                   </Button>
@@ -805,8 +881,8 @@ function App() {
                       marginLeft: "20px",
                       marginBottom: "10px",
                     }}
-                    value={supermessage}
-                    onChange={(e) => setSupermessage(e.target.value)}
+                    value={superMessage}
+                    onChange={(e) => setSuperMessage(e.target.value)}
                   />
                 </div>
                 <div style={{ marginLeft: "20px" }}>
