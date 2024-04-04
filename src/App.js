@@ -5,6 +5,7 @@ import {
   CalendarMonthRegular,
   DeleteRegular,
   BookInformationRegular,
+  SendCopyRegular,
 } from "@fluentui/react-icons";
 import header from "./ambivalent.png";
 
@@ -605,6 +606,161 @@ function App() {
           </div>
         </div>
       </motion.div>
+      {!started && (
+        <div
+          style={{
+            marginTop: "4rem",
+          }}
+        >
+          <p
+            style={{
+              fontSize: "1rem",
+              fontWeight: "400",
+              fontFamily: "freight-micro-pro, serif",
+              fontStyle: "normal",
+              marginBottom: "1rem",
+            }}
+          >
+            If you're stuck, try one of these examples (click{" "}
+            <Button
+              icon={<SendCopyRegular />}
+              style={{
+                fontSize: "1rem",
+                fontWeight: "400",
+                fontFamily: "freight-micro-pro, serif",
+                fontStyle: "normal",
+                pointerEvents: "none",
+              }}
+            >
+              Use
+            </Button>{" "}
+            and then{" "}
+            <Button
+              icon={<AppsAddInRegular />}
+              style={{
+                fontSize: "1rem",
+                fontWeight: "400",
+                fontFamily: "freight-micro-pro, serif",
+                fontStyle: "normal",
+                pointerEvents: "none",
+              }}
+            >
+              Start
+            </Button>{" "}
+            to begin):
+          </p>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: "1.2rem",
+              fontWeight: "400",
+              fontFamily: "freight-text-pro, serif",
+              fontVariantNumeric: "lining-nums",
+            }}
+          >
+            <p>
+              “I don't want to hear you talk about this anymore”{" "}
+              <span
+                style={{
+                  fontSize: "1rem",
+                  fontWeight: "400",
+                  fontFamily: "freight-micro-pro, serif",
+                  fontStyle: "normal",
+                }}
+              >
+                +
+              </span>{" "}
+              2{" "}
+              <span
+                style={{
+                  fontSize: "1rem",
+                  fontWeight: "400",
+                  fontFamily: "freight-micro-pro, serif",
+                  fontStyle: "normal",
+                }}
+              >
+                intents
+              </span>
+            </p>
+            <Button
+              icon={<SendCopyRegular />}
+              size="large"
+              style={{
+                height: "43px",
+                marginLeft: "20px",
+                fontSize: "1rem",
+                fontWeight: "400",
+                fontFamily: "freight-micro-pro, serif",
+                fontStyle: "normal",
+              }}
+              onClick={() => {
+                setUtterance(
+                  "I don't want to hear you talk about this anymore"
+                );
+                setNumAlternatives(2);
+              }}
+            >
+              Use
+            </Button>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: "1.2rem",
+              fontWeight: "400",
+              fontFamily: "freight-text-pro, serif",
+              fontVariantNumeric: "lining-nums",
+            }}
+          >
+            <p>
+              “I don't want to come to your party tonight”{" "}
+              <span
+                style={{
+                  fontSize: "1rem",
+                  fontWeight: "400",
+                  fontFamily: "freight-micro-pro, serif",
+                  fontStyle: "normal",
+                }}
+              >
+                +
+              </span>{" "}
+              2{" "}
+              <span
+                style={{
+                  fontSize: "1rem",
+                  fontWeight: "400",
+                  fontFamily: "freight-micro-pro, serif",
+                  fontStyle: "normal",
+                }}
+              >
+                intents
+              </span>
+            </p>
+            <Button
+              icon={<SendCopyRegular />}
+              size="large"
+              style={{
+                height: "43px",
+                marginLeft: "20px",
+                fontSize: "1rem",
+                fontWeight: "400",
+                fontFamily: "freight-micro-pro, serif",
+                fontStyle: "normal",
+              }}
+              onClick={() => {
+                setUtterance("I don't want to come to your party tonight");
+                setNumAlternatives(2);
+              }}
+            >
+              Use
+            </Button>
+          </div>
+        </div>
+      )}
       {started && (
         <div
           style={{
